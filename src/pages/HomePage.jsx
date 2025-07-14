@@ -5,7 +5,7 @@ import MapComponent from '../components/MapComponent';
 const HomePage = () => {
   return (
     <main className="relative h-screen w-screen bg-guild-primary">
-      <Header />
+      
       <MapComponent />
     </main>
   );

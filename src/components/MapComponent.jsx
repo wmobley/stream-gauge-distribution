@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet-defaulticon-compatibility';
 import { createRoot } from 'react-dom/client';
+import InfoAccordion from './InfoAccordion';
+import Header from './Header';
 import Legend from './Legend';
 import Popup from './Popup';
 
@@ -111,6 +113,7 @@ const MapComponent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [visualizationType, setVisualizationType] = useState('risk');
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Load GeoJSON data
   useEffect(() => {
@@ -267,6 +270,19 @@ const MapComponent = () => {
     };
   }, []);
 
+  // Effect to invalidate map size when the side panel opens or closes
+  useEffect(() => {
+    if (mapRef.current) {
+      // The timeout should match the CSS transition duration to ensure
+      // the map resizes after the container has finished its animation.
+      const timer = setTimeout(() => {
+        mapRef.current.invalidateSize({ animate: true });
+      }, 300); // 300ms matches the transition duration-300
+
+      return () => clearTimeout(timer);
+    }
+  }, [isPanelOpen]);
+
   // Handle visualization type change
   const handleVisualizationChange = (event) => {
     setVisualizationType(event.target.value);
@@ -275,57 +291,71 @@ const MapComponent = () => {
   // Render loading or error states
   if (loading) {
     return (
-      <div className="absolute inset-0 z-0 flex items-center justify-center bg-gray-100">
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading water risk data...</p>
         </div>
-        {legendConfig && <Legend config={legendConfig} />}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="absolute inset-0 z-0 flex items-center justify-center bg-gray-100">
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100">
         <div className="text-center text-red-600">
           <p className="text-lg font-semibold mb-2">Error loading data</p>
           <p className="text-sm">{error}</p>
         </div>
-        {legendConfig && <Legend config={legendConfig} />}
       </div>
     );
   }
 
   return (
-    <>
-      <div
-        ref={mapContainerRef}
-        className="absolute inset-0 z-0"
-        aria-label="Map showing water risk analysis with stream gauge distribution"
+    <div className="h-screen w-screen overflow-hidden">
+      <InfoAccordion
+        visualizationType={visualizationType}
+        isPanelOpen={isPanelOpen}
+        onToggle={() => setIsPanelOpen(!isPanelOpen)}
       />
-      
-      {/* Visualization Type Selector */}
-      <div className="absolute top-4 right-4 z-[1000] bg-white bg-opacity-90 rounded-lg shadow-lg border border-gray-200 p-3">
-        <label htmlFor="visualization-select" className="block text-sm font-medium text-gray-700 mb-2">
-          Visualization Type:
-        </label>
-        <select
-          id="visualization-select"
-          value={visualizationType}
-          onChange={handleVisualizationChange}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-        >
-          {visualizationOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      {legendConfig && <Legend config={legendConfig} />}
-    </>
+      {/* Main content area that holds the map and its UI elements */}
+      <main
+        className={`absolute top-0 right-0 bottom-0 transition-all duration-300 ease-in-out ${
+          isPanelOpen ? 'left-80 md:left-96' : 'left-0'
+        }`}
+      >
+        <div className="relative h-full w-full">
+          <Header />
+          <div
+            ref={mapContainerRef}
+            className="h-full w-full"
+            aria-label="Map showing water risk analysis with stream gauge distribution"
+          />
+
+          {/* Visualization Type Selector */}
+          <div className="absolute top-4 right-4 z-[1000] bg-white bg-opacity-90 rounded-lg shadow-lg border border-gray-200 p-3">
+            <label htmlFor="visualization-select" className="block text-sm font-medium text-gray-700 mb-2">
+              Visualization Type:
+            </label>
+            <select
+              id="visualization-select"
+              value={visualizationType}
+              onChange={handleVisualizationChange}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              {visualizationOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {legendConfig && <Legend config={legendConfig} />}
+        </div>
+      </main>
+    </div>
   );
 };
 
